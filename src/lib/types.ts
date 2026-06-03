@@ -144,8 +144,13 @@ export interface Coupon {
   created_at: string;
 }
 
-export function formatCurrency(paise: number): string {
-  return `₹${(paise / 100).toLocaleString('en-IN')}`;
+export function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 export function formatFeeDisplay(fee: number): string {
