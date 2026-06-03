@@ -44,7 +44,7 @@ export function HomePage() {
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-teal-500/10 border border-teal-500/20 rounded-full text-teal-400 text-sm font-medium mb-6">
               <Zap className="w-3.5 h-3.5" />
-              Free Training + Certification
+              Free Training + Certification + Only Pay Registeration Fees
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-[1.1] tracking-tight">
               Build Real Skills.
