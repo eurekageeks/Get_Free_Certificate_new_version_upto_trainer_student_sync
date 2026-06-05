@@ -4,7 +4,7 @@ import { Link, useRouter } from '../lib/router';
 import type { Course, Tier } from '../lib/types';
 import { formatCurrency, TIER_CONFIG } from '../lib/types';
 import { Clock, BookOpen, ArrowRight, Star, Users, Award, Zap } from 'lucide-react';
-
+import { FaChalkboardTeacher, FaLightbulb, FaTasks, FaCertificate } from "react-icons/fa";
 export function HomePage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
