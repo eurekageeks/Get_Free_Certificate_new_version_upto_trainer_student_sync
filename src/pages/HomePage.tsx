@@ -1,6 +1,7 @@
 import {
-  FaChalkboardTeacher,
   FaUserGraduate,
+  FaLightbulb,
+  FaTasks,
   FaCertificate
 } from "react-icons/fa";
 import { useState, useEffect } from 'react';
@@ -65,7 +66,7 @@ export function HomePage() {
 
 <ul className="space-y-3 mt-4">
   <li className="flex items-center gap-2">
-    <FaChalkboardTeacher className="text-teal-400 text-lg" />
+    <FaUserGraduate className="text-teal-400 text-lg" />
     <span>Attend 10–20 hours of online instructor-led training</span>
   </li>
 
