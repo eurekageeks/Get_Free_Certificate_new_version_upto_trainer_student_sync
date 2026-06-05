@@ -54,7 +54,31 @@ export function HomePage() {
               </span>
             </h1>
             <p className="mt-6 text-lg sm:text-xl text-gray-300 leading-relaxed max-w-2xl">
-              Professional IT courses with industry-recognized certifications. Pay only a small registration fee. Course content and certification are completely free.
+               <p>
+  Register for an industry-recognized certification program by paying only a small registration fee.
+</p>
+
+<ul className="space-y-3 mt-4">
+  <li className="flex items-center gap-2">
+    <FaChalkboardTeacher className="text-teal-400 text-lg" />
+    <span>Attend 10–20 hours of online instructor-led training</span>
+  </li>
+
+  <li className="flex items-center gap-2">
+    <FaLightbulb className="text-teal-400 text-lg" />
+    <span>Learn practical concepts and industry-relevant skills</span>
+  </li>
+
+  <li className="flex items-center gap-2">
+    <FaTasks className="text-teal-400 text-lg" />
+    <span>Complete the certification requirements</span>
+  </li>
+
+  <li className="flex items-center gap-2">
+    <FaCertificate className="text-teal-400 text-lg" />
+    <span>Receive a Verified Certificate of Completion</span>
+  </li>
+</ul>
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
