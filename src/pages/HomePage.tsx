@@ -1,4 +1,8 @@
-import { FaChalkboardTeacher } from "react-icons/fa";
+import {
+  FaChalkboardTeacher,
+  FaUserGraduate,
+  FaCertificate
+} from "react-icons/fa";
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Link, useRouter } from '../lib/router';
