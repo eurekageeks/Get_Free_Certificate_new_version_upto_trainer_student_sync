@@ -236,7 +236,7 @@ export function HomePage() {
                     ))}
                   </ul>
                   <button
-                    onClick={() => router.navigate('/courses')}
+                    onClick={() => router.navigate(`/courses?tier=${plan.tier}`)}
                     className="w-full py-2.5 text-sm font-semibold rounded-xl border-2 border-teal-500 text-teal-600 hover:bg-teal-500 hover:text-white transition-colors"
                   >
                     View Courses

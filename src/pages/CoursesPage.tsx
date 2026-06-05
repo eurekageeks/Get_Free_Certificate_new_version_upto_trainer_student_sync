@@ -8,13 +8,20 @@ import { Clock, BookOpen, ArrowRight, Star, Search, SlidersHorizontal } from 'lu
 export function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTier, setActiveTier] = useState<Tier | 'all'>('all');
+  
+const params = new URLSearchParams(window.location.search);
+const selectedTier = params.get('tier');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
+const [activeTier, setActiveTier] = useState<Tier | 'all'>(
+  (selectedTier as Tier) || 'all'
+);
 
-  useEffect(() => {
-    loadCourses();
-  }, []);
+
+useEffect(() => {
+  loadCourses();
+}, []);
+
 
   async function loadCourses() {
     const { data } = await supabase

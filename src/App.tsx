@@ -42,7 +42,12 @@ function AppRoutes() {
   if (path === '/terms') return <Layout><TermsPage /></Layout>;
   if (path === '/refund') return <Layout><RefundPage /></Layout>;
   if (path === '/contact') return <Layout><ContactPage /></Layout>;
-
+  if (path.startsWith('/courses'))
+  return (
+    <Layout>
+      <CoursesPage />
+    </Layout>
+  );
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
