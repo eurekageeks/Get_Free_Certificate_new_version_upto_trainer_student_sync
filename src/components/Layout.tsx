@@ -22,7 +22,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div className="w-9 h-9 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-md shadow-teal-500/20 group-hover:shadow-teal-500/40 transition-shadow">
                 <GraduationCap className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900 tracking-tight">SkillForge</span>
+              <span className="text-xl font-bold text-gray-900 tracking-tight">A1TI SkillForge</span>
             </Link>
 
             <nav className="hidden md:flex items-center gap-1">
