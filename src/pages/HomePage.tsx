@@ -1,9 +1,3 @@
-import {
-  FaUserGraduate,
-  FaLightbulb,
-  FaTasks,
-  FaCertificate
-} from "react-icons/fa";
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Link, useRouter } from '../lib/router';
@@ -50,7 +44,7 @@ export function HomePage() {
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-teal-500/10 border border-teal-500/20 rounded-full text-teal-400 text-sm font-medium mb-6">
               <Zap className="w-3.5 h-3.5" />
-              Free Training + Certification + Only Pay Registeration Fees
+              Free Training + Certification
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-[1.1] tracking-tight">
               Build Real Skills.
@@ -60,13 +54,13 @@ export function HomePage() {
               </span>
             </h1>
             <p className="mt-6 text-lg sm:text-xl text-gray-300 leading-relaxed max-w-2xl">
-               <p>
+             <p>
   Register for an industry-recognized certification program by paying only a small registration fee.
 </p>
 
 <ul className="space-y-3 mt-4">
   <li className="flex items-center gap-2">
-    <FaUserGraduate className="text-teal-400 text-lg" />
+    <FaChalkboardTeacher className="text-teal-400 text-lg" />
     <span>Attend 10–20 hours of online instructor-led training</span>
   </li>
 
