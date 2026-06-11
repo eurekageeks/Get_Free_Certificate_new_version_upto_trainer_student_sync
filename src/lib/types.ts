@@ -163,3 +163,14 @@ export const TIER_CONFIG: Record<Tier, { label: string; color: string; bg: strin
   intermediate: { label: 'Intermediate', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
   advanced: { label: 'Advanced', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
 };
+export interface Certificate {
+  id: string;
+  certificate_number: string;
+  user_id: string;
+  course_id: string;
+  enrollment_id: string;
+  user_name: string;
+  course_name: string;
+  issued_at: string;
+  signature_url?: string;
+}
