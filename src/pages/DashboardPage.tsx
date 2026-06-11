@@ -4,9 +4,10 @@ import { useAuth } from '../lib/auth';
 import { useRouter, Link } from '../lib/router';
 import type { Enrollment, Certificate, Course, Coupon } from '../lib/types';
 import { formatCurrency, TIER_CONFIG } from '../lib/types';
+import { generateCertificateImage, downloadCertificateImage } from '../lib/certificate';
 import {
   BookOpen, Award, Clock, Play, CheckCircle, ArrowRight, BarChart3,
-  CreditCard, Tag, ShieldCheck, X, Zap, Search, SlidersHorizontal, Star
+  CreditCard, Tag, ShieldCheck, X, Zap, Search, SlidersHorizontal, Star, Download
 } from 'lucide-react';
 
 interface EnrollmentWithCourse extends Enrollment {
@@ -29,104 +30,91 @@ export function DashboardPage() {
   const router = useRouter();
 
   const loadData = useCallback(async () => {
-  if (!user) return;
+    if (!user) return;
 
-  setDataLoading(true);
-  setDataError(null);
+    setDataLoading(true);
+    setDataError(null);
 
-  try {
+    try {
+      const [enrollRes, certRes, coursesRes] = await Promise.all([
+        
+        supabase
+          .from('enrollments')
+          .select(`
+            *,
+            course:courses(*)
+          `)
+          .eq('user_id', user.id)
+          .order('enrolled_at', { ascending: false }),
+         
+        supabase
+          .from('certificates')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('issued_at', { ascending: false }),
 
-   const [enrollRes, certRes, coursesRes] = await Promise.all([
-  supabase
-    .from('enrollments')
-    .select(`
-      *,
-      course:courses(*)
-    `)
-    .eq('user_id', user.id)
-    .order('enrolled_at', { ascending: false }),
+        supabase
+          .from('courses')
+          .select('*')
+          .eq('is_published', true)
+          .order('registration_fee', { ascending: true }),
+      ]);
 
-  supabase
-    .from('certificates')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('issued_at', { ascending: false }),
+      if (enrollRes.error) {
+        console.error('Enrollments error:', enrollRes.error);
+      }
 
-  supabase
-    .from('courses')
-    .select('*')
-    .eq('is_published', true)
-    .order('registration_fee', { ascending: true }),
-]);
-    if (enrollRes.error) {
-      console.error('Enrollments error:', enrollRes.error);
+      if (coursesRes.error) {
+        console.error('Courses error:', coursesRes.error);
+        setDataError(coursesRes.error.message);
+      }
+
+      const enrollmentsWithProgress = await Promise.all(
+        (enrollRes.data || []).map(async (enrollment: any) => {
+          const { data: assignmentsData } = await supabase
+            .from('course_assignments')
+            .select('id')
+            .eq('course_id', enrollment.course_id);
+
+          let topicProgress: any[] = [];
+
+          if (assignmentsData && assignmentsData.length > 0) {
+            const assignmentIds = assignmentsData.map(a => a.id);
+
+            const { data } = await supabase
+              .from('topic_progress')
+              .select('*')
+              .in('assignment_id', assignmentIds);
+
+            topicProgress = data || [];
+          }
+
+          const totalTopics = topicProgress.length;
+          const completedTopics = topicProgress.filter((t: any) => t.completed).length;
+          const progress = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
+
+          return {
+            ...enrollment,
+            topicProgress,
+            totalTopics,
+            completedTopics,
+            progress,
+            status: progress === 100 ? 'completed' : 'active',
+          };
+        })
+      );
+
+      setEnrollments(enrollmentsWithProgress);
+      setCertificates(certRes.data || []);
+      setAllCourses(coursesRes.data || []);
+
+    } catch (err) {
+      console.error('Dashboard data load error:', err);
+      setDataError('Failed to load data. Please refresh the page.');
+    } finally {
+      setDataLoading(false);
     }
-
-    if (coursesRes.error) {
-      console.error('Courses error:', coursesRes.error);
-      setDataError(coursesRes.error.message);
-    }
-
-    const enrollmentsWithProgress = await Promise.all(
-  (enrollRes.data || []).map(async (enrollment: any) => {
-
-    const { data: assignmentsData } = await supabase
-      .from('course_assignments')
-      .select('id')
-      .eq('course_id', enrollment.course_id);
-
-    let topicProgress: any[] = [];
-
-    if (assignmentsData && assignmentsData.length > 0) {
-
-      const assignmentIds = assignmentsData.map(a => a.id);
-
-      const { data } = await supabase
-        .from('topic_progress')
-        .select('*')
-        .in('assignment_id', assignmentIds);
-
-      topicProgress = data || [];
-    }
-
-    const totalTopics = topicProgress.length;
-
-    const completedTopics =
-      topicProgress.filter((t: any) => t.completed).length;
-
-    const progress =
-      totalTopics > 0
-        ? Math.round((completedTopics / totalTopics) * 100)
-        : 0;
-
-    return {
-      ...enrollment,
-      topicProgress,
-      totalTopics,
-      completedTopics,
-      progress,
-      status: progress === 100 ? 'completed' : 'active',
-    };
-  })
-);
-
-setEnrollments(enrollmentsWithProgress);
-    setEnrollments(enrollmentsWithProgress);
-    setCertificates(certRes.data || []);
-    setAllCourses(coursesRes.data || []);
-
-  } catch (err) {
-
-    console.error('Dashboard data load error:', err);
-    setDataError('Failed to load data. Please refresh the page.');
-
-  } finally {
-
-    setDataLoading(false);
-
-  }
-
-}, [user]);
+  }, [user]);
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -167,7 +155,7 @@ setEnrollments(enrollmentsWithProgress);
     }
   }
 
- const availableCourses = allCourses || [];
+  const availableCourses = allCourses || [];
 
   const filteredAvailable = availableCourses.filter(c => {
     if (tierFilter !== 'all' && c.tier !== tierFilter) return false;
@@ -211,13 +199,11 @@ setEnrollments(enrollmentsWithProgress);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">My Dashboard</h1>
         <p className="mt-1 text-gray-500">Welcome back, {profile?.full_name || 'Student'}</p>
       </div>
 
-      {/* Error banner */}
       {dataError && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center justify-between">
           <span>{dataError}</span>
@@ -227,7 +213,6 @@ setEnrollments(enrollmentsWithProgress);
         </div>
       )}
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4">
           <div className="w-12 h-12 bg-teal-50 rounded-xl flex items-center justify-center">
@@ -267,7 +252,6 @@ setEnrollments(enrollmentsWithProgress);
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
         {[
           { id: 'courses' as const, label: 'Browse Courses', icon: BookOpen, count: availableCourses.length },
@@ -294,10 +278,8 @@ setEnrollments(enrollmentsWithProgress);
         ))}
       </div>
 
-      {/* Browse Courses Tab */}
       {activeTab === 'courses' && (
         <div>
-          {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -359,7 +341,6 @@ setEnrollments(enrollmentsWithProgress);
         </div>
       )}
 
-      {/* My Courses Tab */}
       {activeTab === 'enrolled' && (
         <div>
           {enrollments.length === 0 ? (
@@ -387,7 +368,6 @@ setEnrollments(enrollmentsWithProgress);
         </div>
       )}
 
-      {/* Certificates Tab */}
       {activeTab === 'certs' && (
         <div>
           {certificates.length === 0 ? (
@@ -399,26 +379,7 @@ setEnrollments(enrollmentsWithProgress);
           ) : (
             <div className="space-y-3">
               {certificates.map((cert) => (
-                <div
-                  key={cert.id}
-                  className="bg-white rounded-xl border border-gray-100 p-5 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
-                      <Award className="w-5 h-5 text-emerald-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">{cert.course_name}</div>
-                      <div className="text-xs text-gray-400">ID: {cert.certificate_number}</div>
-                    </div>
-                  </div>
-                  <Link
-                    to={`/verify/${cert.certificate_number}`}
-                    className="text-sm text-teal-600 font-medium hover:underline"
-                  >
-                    View
-                  </Link>
-                </div>
+                <CertificateCard key={cert.id} certificate={cert} />
               ))}
             </div>
           )}
@@ -428,7 +389,6 @@ setEnrollments(enrollmentsWithProgress);
   );
 }
 
-/* ── Available Course Card with Payment Gateway ── */
 function AvailableCourseCard({ course, userId, userEmail, profile, onEnrolled }: {
   course: Course;
   userId: string;
@@ -444,16 +404,18 @@ function AvailableCourseCard({ course, userId, userEmail, profile, onEnrolled }:
   const [processing, setProcessing] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'idle' | 'creating_order' | 'paying' | 'verifying' | 'success'>('idle');
   const config = TIER_CONFIG[course.tier];
-  const totalLessons = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
+  const totalLessons = course.modules?.reduce((sum, m) => sum + (m.lessons?.length || 0), 0) || 0;
 
   async function applyCoupon() {
     if (!couponCode.trim()) return;
     setCouponLoading(true);
     setCouponError('');
-    const { data: assignments } = await supabase
-  .from('course_assignments')
-  .select('id')
-  .eq('course_id', enrollment.course_id);
+
+    const { data } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', couponCode.toUpperCase())
+      .maybeSingle();
 
     if (data && data.used_count < data.max_uses && (!data.valid_until || new Date(data.valid_until) > new Date())) {
       setCoupon(data);
@@ -469,82 +431,61 @@ function AvailableCourseCard({ course, userId, userEmail, profile, onEnrolled }:
     return Math.round(course.registration_fee * (1 - coupon.discount_percent / 100));
   }
 
- async function handlePayment() {
-  setProcessing(true);
-  setPaymentStep('creating_order');
+  async function handlePayment() {
+    setProcessing(true);
+    setPaymentStep('creating_order');
 
-  try {
+    try {
+      const { data: existingEnrollment } = await supabase
+        .from('enrollments')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('course_id', course.id)
+        .maybeSingle();
 
-    // Check existing enrollment
-    const { data: existingEnrollment } = await supabase
-      .from('enrollments')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('course_id', course.id)
-      .maybeSingle();
+      if (existingEnrollment) {
+        alert('You are already enrolled in this course.');
+        setShowPayment(false);
+        onEnrolled();
+        return;
+      }
 
-    if (existingEnrollment) {
-      alert('You are already enrolled in this course.');
-      setShowPayment(false);
-      onEnrolled();
-      return;
-    }
+      const { data: enrollment, error: enrollErr } = await supabase
+        .from('enrollments')
+        .insert({
+          user_id: userId,
+          course_id: course.id,
+          status: 'active',
+          progress: 0,
+        })
+        .select()
+        .single();
 
-    // Create enrollment
-    const { data: enrollment, error: enrollErr } = await supabase
-      .from('enrollments')
-      .insert({
-        user_id: userId,
-        course_id: course.id,
-        status: 'active',
-        progress: 0,
-      })
-      .select()
-      .single();
+      if (enrollErr) {
+        throw enrollErr;
+      }
 
-    if (enrollErr) {
-      throw enrollErr;
-    }
+      if (!enrollment) {
+        throw new Error('Enrollment creation failed');
+      }
 
-    if (!enrollment) {
-      throw new Error('Enrollment creation failed');
-    }
+      alert('Enrollment successful!');
+      setPaymentStep('success');
 
-    console.log('Enrollment created:', enrollment);
+      setTimeout(() => {
+        setShowPayment(false);
+        setPaymentStep('idle');
+        onEnrolled();
+      }, 1000);
 
-    // TEMPORARY SUCCESS
-    alert('Enrollment successful!');
-
-    setPaymentStep('success');
-
-    setTimeout(() => {
-      setShowPayment(false);
+    } catch (err) {
+      console.error('Payment error:', err);
+      alert(typeof err === 'object' ? JSON.stringify(err, null, 2) : String(err));
       setPaymentStep('idle');
-      onEnrolled();
-    }, 1000);
-
-  } catch (err) {
-
-    console.error('Payment error:', err);
-
-    alert(
-      typeof err === 'object'
-        ? JSON.stringify(err, null, 2)
-        : String(err)
-    );
-
-    setPaymentStep('idle');
-
-  } finally {
-
-    setProcessing(false);
-
+    } finally {
+      setProcessing(false);
+    }
   }
-}
-   
-      
-    
-  
 
   const finalFee = getFinalFee();
   const hasDiscount = coupon && coupon.discount_percent > 0;
@@ -575,7 +516,7 @@ function AvailableCourseCard({ course, userId, userEmail, profile, onEnrolled }:
           <p className="text-sm text-gray-500 line-clamp-2 mb-3">{course.description}</p>
           <div className="flex items-center gap-4 text-xs text-gray-400 mb-4">
             <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {course.duration_hours}h</span>
-            <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {course.modules.length} modules</span>
+            <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {course.modules?.length || 0} modules</span>
             <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5" /> {totalLessons} lessons</span>
           </div>
           <div className="flex items-center justify-between pt-4 border-t border-gray-100">
@@ -593,7 +534,6 @@ function AvailableCourseCard({ course, userId, userEmail, profile, onEnrolled }:
         </div>
       </div>
 
-      {/* Payment Modal */}
       {showPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => !processing && setShowPayment(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -689,7 +629,6 @@ function AvailableCourseCard({ course, userId, userEmail, profile, onEnrolled }:
   );
 }
 
-/* ── Enrollment Card ── */
 function EnrollmentCard({ enrollment, onUpdateProgress }: {
   enrollment: EnrollmentWithCourse;
   onUpdateProgress: (id: string, progress: number) => void;
@@ -734,10 +673,58 @@ function EnrollmentCard({ enrollment, onUpdateProgress }: {
             style={{ width: `${enrollment.progress}%` }}
           />
         </div>
-        <div className="mt-2 text-xs text-gray-500">
-  {enrollment.completedTopics || 0} /
-  {enrollment.totalTopics || 0} topics completed by trainer
-</div>     </div>
+        <div className="mt-2 text-xs text-gray-500 mb-3">
+          {enrollment.completedTopics || 0} / {enrollment.totalTopics || 0} topics completed
+        </div>
+        {isCompleted && (
+          <button
+            onClick={() => onUpdateProgress(enrollment.id, 100)}
+            className="w-full px-3 py-2 text-sm font-medium bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all flex items-center justify-center gap-2"
+          >
+            <Award className="w-4 h-4" /> View Certificate
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CertificateCard({ certificate }: { certificate: Certificate }) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  async function handleDownload() {
+    setIsDownloading(true);
+    try {
+      const blob = await generateCertificateImage(certificate);
+      downloadCertificateImage(certificate, blob);
+    } catch (error) {
+      console.error('Certificate download error:', error);
+      alert('Failed to download certificate');
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
+  
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 p-5 flex items-center justify-between hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
+          <Award className="w-5 h-5 text-emerald-600" />
+        </div>
+        <div>
+          <div className="font-medium text-gray-900">{certificate.course_name}</div>
+          <div className="text-xs text-gray-400">
+            Awarded to: <span className="font-medium text-gray-600">{certificate.user_name}</span>
+          </div>
+          <div className="text-xs text-gray-400 mt-1">ID: {certificate.certificate_number}</div>
+        </div>
+      </div>
+     <button onClick={handleDownload} disabled={isDownloading}>
+        <Download className="w-4 h-4" />
+        {isDownloading ? 'Generating...' : 'Download'}
+      </button>
     </div>
   );
 }
