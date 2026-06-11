@@ -8,20 +8,14 @@ import { Clock, BookOpen, ArrowRight, Star, Search, SlidersHorizontal } from 'lu
 export function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  
-const params = new URLSearchParams(window.location.search);
-const selectedTier = params.get('tier');
+  const [activeTier, setActiveTier] = useState<Tier | 'all'>('all');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
-const [activeTier, setActiveTier] = useState<Tier | 'all'>(
-  (selectedTier as Tier) || 'all'
-);
 
 
-useEffect(() => {
-  loadCourses();
-}, []);
-
+  useEffect(() => {
+    loadCourses();
+  }, []);
 
   async function loadCourses() {
     const { data } = await supabase
@@ -35,13 +29,38 @@ useEffect(() => {
 
   const categories = ['all', ...Array.from(new Set(courses.map(c => c.category)))];
 
-  const filtered = courses.filter(c => {
-    if (activeTier !== 'all' && c.tier !== activeTier) return false;
-    if (category !== 'all' && c.category !== category) return false;
-    if (search && !c.title.toLowerCase().includes(search.toLowerCase()) && !c.description.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+ const today = new Date();
+today.setHours(0, 0, 0, 0);
 
+const filtered = courses.filter((c) => {
+  if (!c.is_published) return false;
+
+  if (c.batch_start_date && c.batch_end_date) {
+    const startDate = new Date(c.batch_start_date);
+    const endDate = new Date(c.batch_end_date);
+
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+
+    // Hide course during running batch period
+    if (today >= startDate && today <= endDate) {
+      return false;
+    }
+  }
+
+  if (activeTier !== 'all' && c.tier !== activeTier) return false;
+  if (category !== 'all' && c.category !== category) return false;
+
+  if (
+    search &&
+    !c.title.toLowerCase().includes(search.toLowerCase()) &&
+    !c.description.toLowerCase().includes(search.toLowerCase())
+  ) {
+    return false;
+  }
+
+  return true;
+});
   const tiers: (Tier | 'all')[] = ['all', 'beginner', 'intermediate', 'advanced'];
 
   return (

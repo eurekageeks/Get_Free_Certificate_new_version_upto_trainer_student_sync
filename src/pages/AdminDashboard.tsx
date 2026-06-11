@@ -261,6 +261,7 @@ function CoursesTab() {
     setCourses(prev => prev.filter(c => c.id !== id));
   }
 
+ 
   const filtered = courses.filter(c =>
     c.title.toLowerCase().includes(search.toLowerCase()) ||
     c.category.toLowerCase().includes(search.toLowerCase())
@@ -310,6 +311,9 @@ function CoursesTab() {
                   <span className={`px-2 py-0.5 text-xs font-semibold rounded-lg ${config.bg} ${config.color} border ${config.border}`}>
                     {config.label}
                   </span>
+                 <div>
+                 </div>
+ 
                   <button
                     onClick={() => togglePublish(course)}
                     className={`px-2 py-0.5 text-xs font-semibold rounded-lg ${
@@ -374,27 +378,48 @@ function CourseForm({ course, onSave, onCancel }: { course: Course | null; onSav
     slug: course?.slug || '',
     description: course?.description || '',
     category: course?.category || '',
-    tier: course?.tier || 'beginner' as const,
+    tier: course?.tier || 'beginner',
     registration_fee: course?.registration_fee || 19900,
     duration_hours: course?.duration_hours || 10,
     image_url: course?.image_url || '',
     is_published: course?.is_published || false,
     modules: course?.modules || [{ title: 'Module 1', lessons: ['Lesson 1'] }],
+    batch_start_date: course?.batch_start_date || '',
+batch_end_date: course?.batch_end_date || '',
   });
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    const data = { ...form };
-    if (course) {
-      await supabase.from('courses').update(data).eq('id', course.id);
-    } else {
-      await supabase.from('courses').insert(data);
-    }
-    setSaving(false);
-    onSave();
+  e.preventDefault();
+  setSaving(true);
+
+  const data = { ...form };
+
+  let result;
+
+  if (course) {
+    result = await supabase
+      .from('courses')
+      .update(data)
+      .eq('id', course.id);
+  } else {
+    result = await supabase
+      .from('courses')
+      .insert([data]);
   }
+
+  console.log(result);
+
+  if (result.error) {
+    console.error(result.error);
+    alert(result.error.message);
+    setSaving(false);
+    return;
+  }
+
+  setSaving(false);
+  onSave();
+}
 
   function addModule() {
     setForm({ ...form, modules: [...form.modules, { title: `Module ${form.modules.length + 1}`, lessons: [] }] });
@@ -467,9 +492,54 @@ function CourseForm({ course, onSave, onCancel }: { course: Course | null; onSav
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fee (paise)</label>
-            <input type="number" value={form.registration_fee} onChange={e => setForm({ ...form, registration_fee: parseInt(e.target.value) })} required
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      Batch Start Date
+    </label>
+    <input
+      type="date"
+      value={form.batch_start_date}
+      onChange={(e) =>
+        setForm({
+          ...form,
+          batch_start_date: e.target.value,
+        })
+      }
+      className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+    />
+  </div>
+
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      Batch End Date
+    </label>
+    <input
+      type="date"
+      value={form.batch_end_date}
+      onChange={(e) =>
+        setForm({
+          ...form,
+          batch_end_date: e.target.value,
+        })
+      }
+      className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+    />
+  </div>
+</div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Course Fee (INR)</label>
+            <label>Fee (₹)</label>
+
+<input
+  type="number"
+  value={form.registration_fee}
+  onChange={(e) =>
+    setForm({
+      ...form,
+      registration_fee: Number(e.target.value),
+    })
+  }
+/>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
